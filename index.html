@@ -1,0 +1,95 @@
+<!DOCTYPE HTML>
+<link href="https://fonts.googleapis.com/css?family=Roboto" rel="stylesheet">
+<link href="styles.css" rel="stylesheet">
+<script src="script.js"></script>
+
+<head>
+    <!-- SO: 10614481 -->
+    <meta charset="utf-8" name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
+    <title>Tag Remote</title>
+</head>
+
+<body onload="main()">
+
+    <div id="header_shade" onclick="clicked_menu(true)"></div>
+
+    <div id="header">
+        <div id="stop_audio" onclick="clicked_stop_audio()">&#9632;</div>
+        <div class="button" id="menu_button" onclick="clicked_menu()">&#8226;&#8226;&#8226;</div>
+
+        <div id="options_container">
+
+            <br>
+            <div class="option">
+                <div class="option_label">Button width</div>
+                <div id="button_width_buttons">
+                    <span class="zoom button" onclick="clicked_button_width(-2)">-</span>
+                    <span id="button_width_value">90</span>
+                    <span class="zoom button" onclick="clicked_button_width(2)">+</span>
+                </div>
+            </div>
+
+            <br><br>
+            <div class="option">
+                <div class="option_label">Theme</div>
+                <div id="theme_buttons">
+                    <input onclick="clicked_theme()" type="radio" name="theme_type" value="light" id="theme_light">
+                    <label class="radio_button" for="theme_light">Light</label>
+                    <input onclick="clicked_theme()" type="radio" name="theme_type" value="dark" id="theme_dark" checked>
+                    <label class="radio_button" for="theme_dark">Dark</label>
+                    <input onclick="clicked_theme()" type="radio" name="theme_type" value="amoled" id="theme_amoled">
+                    <label class="radio_button" for="theme_amoled">AMOLED</label>
+                </div>
+            </div>
+
+            <br><br>
+            <div class="option">
+                <div class="option_label">Sort by</div>
+                <div id="sortby_buttons">
+                    <input onclick="clicked_sortby()" type="radio" name="sort_type" value="name" id="sort_name" checked>
+                    <label class="radio_button" for="sort_name">Name</label>
+                    <input onclick="clicked_sortby()" type="radio" name="sort_type" value="hits" id="sort_hits">
+                    <label class="radio_button" for="sort_hits">Hits</label>
+                </div>
+            </div>
+
+            <br><br>
+            <div class="button" id="select_favorites" onclick="clicked_select_favorites()">Select favorites</div>
+            
+            <br><br>
+            <div id="session_info">
+                Server: <span id="server_name"></span><br>
+                Channel: <span id="channel_name"></span><br>
+                Voice Channel: <span id="voice_channel_name"></span>
+            </div>
+
+        </div>
+
+    </div>
+
+    <div id="main_container">
+
+        <div id="favorites_hint" class="hidden">
+            Tap on a tag to add or remove it from the favorites list. When you are finished, tap "Done".
+        </div>
+
+        <div id="favorites" class="button_container"></div>
+
+        <div id="tags" class="button_container"></div>
+
+        <br><br>
+        <div id="credits">Version <span id="version"></span><br>Powered by Discord webhooks<br>Hosted with GitHub Pages</div>
+
+    </div>
+
+    <div id="notification_container" class="hidden">
+        <div id="click_area" class="okay_action"></div>
+        <div id="notification_box">
+            <img src="warning.svg" id="notification_warning">
+            <div id="notification_text"></div>
+        </div>
+    </div>
+
+    <div class="tag_button" onclick="clicked_tag(this)" id="template_tag_button"></div>
+
+</body>
