@@ -90,9 +90,14 @@ a:hover {
 
 }
 
-#select_favorites {
+#select_favorites, #update_tags {
     width: 150px;
     margin: auto;
+}
+
+#okay_button {
+    width: 60px;
+    margin: auto auto 20px auto;
 }
 
 .option {

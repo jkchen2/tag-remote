@@ -4,7 +4,8 @@ const CORS_PROXY = 'https://cors-anywhere.herokuapp.com/';
 // Globals are used here because it's a single, simple script.
 var start_data = {'fetched': false},
     menu_expanded = false,
-    selecting_favorites = false;
+    selecting_favorites = false,
+    update_code = '';
 
 function _qs(selector) { return document.querySelector(selector); }
 
@@ -21,15 +22,21 @@ async function main() {
     // Check if data can be loaded
     var split = window.location.hash.replace('#', '').split(':');
     if (split.length == 2) {
-        if (!await fetch_start_data(split))
+        start_data.upload_channel_id = split[0];
+        if (!await fetch_start_data(split[1]))
             return;
         if (!await check_session_validity())
             return;
+
+        // Check for potential updates
+        if (!await clicked_update_tags(true))
+            return;
+
+        load_tags();
+        load_favorite_tags();
         _qs('#server_name').innerText = start_data.guild_name;
         _qs('#channel_name').innerText = start_data.channel_name;
         _qs('#voice_channel_name').innerText = start_data.voice_channel_name;
-        load_tags(0);
-        load_favorite_tags(0);
         close_message();
     } else {
         show_message('Invalid session. Open the link provided by the Discord bot instead.', true);
@@ -37,14 +44,43 @@ async function main() {
 
 }
 
-async function fetch_start_data(url_args) {
-    show_message('Please wait...\nFetching session data');
-    var data_url = 'https://cdn.discordapp.com/attachments/' + url_args[0] + '/' + url_args[1] + '/remote_data';
+async function clicked_update_tags(first_time = false) {
+    if (!first_time) {
+        if (!await check_session_validity(true))  // Get webhook name
+            return false;
+    }
+    var webhook_name = start_data.hook_data.name;
+    var new_code = webhook_name.slice(0, -1).split('[')[1];
+    if (new_code !== update_code) {
+        update_code = new_code;
+    } else if (first_time) {  // Ignore no updates on startup
+        return true;
+    } else {
+        show_message('No update available.', true, true);
+        return false;
+    }
+
+    if (!await fetch_start_data(update_code, true))
+        return false;
+
+    if (!first_time) {
+        load_tags();
+        load_favorite_tags();
+        close_message();
+        clicked_menu(true);
+    }
+    return true;
+}
+
+async function fetch_start_data(snowflake, updating = false) {
+    show_message('Please wait...\n' + (updating ? 'Fetching' : 'Updating') + ' session data');
+    var data_url = (
+        'https://cdn.discordapp.com/attachments/' +
+        start_data.upload_channel_id + '/' + snowflake + '/remote_data');
 
     // Download session data
     var parsed, response;
     response = await fetch(CORS_PROXY + data_url);
-    console.log(response);
     switch (response.status) {
         case 403:
             show_message('Invalid session code.', true);
@@ -60,9 +96,19 @@ async function fetch_start_data(url_args) {
     parsed = await response.json();
     try {
         if (parsed) {
-            start_data = parsed;  // version, guild, channel, voice_channel, tags
+            [
+                'version',
+                'guild', 'guild_name',
+                'channel', 'channel_name',
+                'voice_channel', 'voice_channel_name',
+                'tags'
+            ].forEach(it => start_data[it] = parsed[it]);
             start_data.hook_url = 'https://canary.discordapp.com/api/webhooks/' + parsed.webhook[0] + '/' + parsed.webhook[1];
             start_data.fetched = true;
+            if (start_data.version !== VERSION) {
+                show_message('Outdated version. Reload the page to try again.', true);
+                return false;
+            }
             return true;
         }
     } catch (e) {
@@ -96,20 +142,21 @@ async function check_session_validity() {
     return true;
 }
 
-function _sort_tag_list(sort_strategy, tag_list) {
-    if (sort_strategy === 0)  // Sort by name
+function _sort_tag_list(tag_list) {
+    var sort_strategy = localStorage.getItem('sort') || 'name';
+    if (sort_strategy === 'name')  // Sort by name
         tag_list.sort((a, b) => a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0);  // SO: 5199901
     else  // Sort by hits
         tag_list.sort((a, b) => a[1] < b[1] ? 1 : a[1] > b[1] ? -1 : 0);
 }
 
-function load_tags(sort_strategy, highlight_favorited = false) {
+function load_tags(highlight_favorited = false) {
     var tags_div = _qs('#tags');
     var tag_list = [];
     var favorited = JSON.parse(localStorage.getItem(start_data.guild) || '[]');
     for (var key in start_data.tags)
         tag_list.push([key, start_data.tags[key].hits]);
-    _sort_tag_list(sort_strategy, tag_list);
+    _sort_tag_list(tag_list);
 
     while (tags_div.firstChild)
         tags_div.removeChild(tags_div.lastChild);
@@ -127,7 +174,7 @@ function load_tags(sort_strategy, highlight_favorited = false) {
     }
 }
 
-function load_favorite_tags(sort_strategy) {
+function load_favorite_tags() {
     var favorites_div = _qs('#favorites');
     var tag_list = [];
     var used = [];
@@ -139,7 +186,7 @@ function load_favorite_tags(sort_strategy) {
         }
     }
     localStorage.setItem(start_data.guild, JSON.stringify(used));
-    _sort_tag_list(sort_strategy, tag_list);
+    _sort_tag_list(tag_list);
 
     while (favorites_div.firstChild)
         favorites_div.removeChild(favorites_div.lastChild);
@@ -157,7 +204,6 @@ function load_favorite_tags(sort_strategy) {
 }
 
 async function clicked_tag(tag) {
-    console.log(tag);
     if (selecting_favorites) {
         tag.classList.toggle('favorite_outline');
         var favorited = JSON.parse(localStorage.getItem(start_data.guild) || '[]');
@@ -232,20 +278,16 @@ function clicked_theme() {
     document.body.style.setProperty('--fg-favorited-transparent', theme_values[6]);
 }
 
-function _get_sort_strategy() {
-    var selected = _qs('#sortby_buttons input:checked').value;
-    return selected === 'name' ? 0 : 1;
-}
-
 function clicked_sortby() {
-    var sort_strategy = _get_sort_strategy();
-    load_tags(sort_strategy);
-    load_favorite_tags(sort_strategy);
+    var selected = _qs('#sortby_buttons input:checked').value;
+    localStorage.setItem('sort', selected);
+    load_tags();
+    load_favorite_tags();
     clicked_menu(true);
 }
 
 function clicked_select_favorites() {
-    load_tags(_get_sort_strategy(), true);
+    load_tags(true);
     _qs('#favorites_hint').classList.remove('hidden');
     _qs('#favorites').classList.add('hidden');
     _qs('#menu_button').innerText = 'Done';
@@ -253,13 +295,17 @@ function clicked_select_favorites() {
     clicked_menu(true);
 }
 
-function show_message(message, warn = false) {
+function show_message(message, warn = false, button = false) {
     _qs('#notification_text').innerText = message;
     _qs('#notification_container').classList.remove('hidden');
     if (warn)
         _qs('#notification_warning').classList.remove('hidden');
     else
         _qs('#notification_warning').classList.add('hidden');
+    if (button)
+        _qs('#okay_button').classList.remove('hidden');
+    else
+        _qs('#okay_button').classList.add('hidden');
 }
 
 function close_message() {
@@ -276,7 +322,6 @@ async function send_message(content) {
 
     switch (response.status) {
         case 429:
-            console.log("Rate limited!");
             for (var it = 5; it > 0; it-- ) {
                 show_message('Rate limit exceeded. Please wait...\n' + it, true);
                 await new Promise(_ => setTimeout(_, 1000));
@@ -300,9 +345,8 @@ function clicked_menu(always_close = false) {
         _qs('#menu_button').innerHTML = '&#8226;&#8226;&#8226;';
         _qs('#favorites_hint').classList.add('hidden');
         _qs('#favorites').classList.remove('hidden');
-        var sort_strategy = _get_sort_strategy();
-        load_tags(sort_strategy);
-        load_favorite_tags(sort_strategy);
+        load_tags();
+        load_favorite_tags();
 
         selecting_favorites = false;
     } else {
