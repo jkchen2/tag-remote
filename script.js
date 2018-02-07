@@ -37,6 +37,7 @@ async function main() {
         _qs('#server_name').innerText = start_data.guild_name;
         _qs('#channel_name').innerText = start_data.channel_name;
         _qs('#voice_channel_name').innerText = start_data.voice_channel_name;
+        document.title = "Tag Remote (" + start_data.guild_name + ")";
         close_message();
     } else {
         show_message('Invalid session. Open the link provided by the Discord bot instead.', true);
@@ -66,6 +67,10 @@ async function clicked_update_tags(first_time = false) {
     if (!first_time) {
         load_tags();
         load_favorite_tags();
+        _qs('#server_name').innerText = start_data.guild_name;
+        _qs('#channel_name').innerText = start_data.channel_name;
+        _qs('#voice_channel_name').innerText = start_data.voice_channel_name;
+        document.title = "Tag Remote (" + start_data.guild_name + ")";
         close_message();
         clicked_menu(true);
     }
@@ -97,7 +102,7 @@ async function fetch_start_data(snowflake, updating = false) {
     try {
         if (parsed) {
             [
-                'version',
+                'version', 'bot_id',
                 'guild', 'guild_name',
                 'channel', 'channel_name',
                 'voice_channel', 'voice_channel_name',
@@ -153,7 +158,7 @@ function _sort_tag_list(tag_list) {
 function load_tags(highlight_favorited = false) {
     var tags_div = _qs('#tags');
     var tag_list = [];
-    var favorited = JSON.parse(localStorage.getItem(start_data.guild) || '[]');
+    var favorited = JSON.parse(localStorage.getItem(start_data.guild + start_data.bot_id) || '[]');
     for (var key in start_data.tags)
         tag_list.push([key, start_data.tags[key].hits]);
     _sort_tag_list(tag_list);
@@ -178,14 +183,14 @@ function load_favorite_tags() {
     var favorites_div = _qs('#favorites');
     var tag_list = [];
     var used = [];
-    var favorited = JSON.parse(localStorage.getItem(start_data.guild) || '[]');
+    var favorited = JSON.parse(localStorage.getItem(start_data.guild + start_data.bot_id) || '[]');
     for (var key in start_data.tags) {
         if (favorited.includes(key)) {
             used.push(key);
             tag_list.push([key, start_data.tags[key].hits]);
         }
     }
-    localStorage.setItem(start_data.guild, JSON.stringify(used));
+    localStorage.setItem(start_data.guild + start_data.bot_id, JSON.stringify(used));
     _sort_tag_list(tag_list);
 
     while (favorites_div.firstChild)
@@ -206,13 +211,13 @@ function load_favorite_tags() {
 async function clicked_tag(tag) {
     if (selecting_favorites) {
         tag.classList.toggle('favorite_outline');
-        var favorited = JSON.parse(localStorage.getItem(start_data.guild) || '[]');
+        var favorited = JSON.parse(localStorage.getItem(start_data.guild + start_data.bot_id) || '[]');
         var included = favorited.indexOf(tag.dataset.key);
         if (included > -1)
             favorited.splice(included, 1);
         else
             favorited.push(tag.dataset.key);
-        localStorage.setItem(start_data.guild, JSON.stringify(favorited));
+        localStorage.setItem(start_data.guild + start_data.bot_id, JSON.stringify(favorited));
     } else {
         var color = tag.classList.contains('favorited') ? 'favorited' : 'primary';
         tag.style.transition = 'initial';
