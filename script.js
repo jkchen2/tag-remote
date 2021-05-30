@@ -1,5 +1,5 @@
 const VERSION = 1;
-const CORS_PROXY = 'https://cors-anywhere.herokuapp.com/';
+const CORS_PROXY = 'https://cors.bridged.cc/';
 
 // Globals are used here because it's a single, simple script.
 var start_data = {'fetched': false},
